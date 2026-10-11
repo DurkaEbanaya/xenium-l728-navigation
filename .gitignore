@@ -1,0 +1,6 @@
+/backup/
+/experimental/
+/tools/__pycache__/
+/build/
+/tfboot.bin
+*.py[cod]
