@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-"""Build an OFFLINE experimental image. Does not access USB or flash."""
+"""Build the keyboard patch offline. Does not access USB or flash."""
 import hashlib
 import json
 import struct
@@ -12,6 +12,7 @@ ROOT = Path(__file__).resolve().parents[1]
 TOOLS = ROOT / "tools"
 OUTPUT = ROOT / "experimental"
 EXPECTED = "f4bae9cf5677e4e26bfe8718a81976a1b5bce6cbb6e1d0ae06a863bc029dc8a9"
+VERIFIED_OUTPUT = "011843e8608f8cd2da0e4f812554db6be59219109e844905ed347eb70a3554ed"
 BASE = 0x88000000
 PAYLOAD = 0x7e13c0
 CALLBACKS = [
@@ -65,17 +66,38 @@ def main():
     patched.extend(b"\xff" * (-len(patched) % 2048))
     (OUTPUT / "l728-user-navigation-UNTESTED.bin").write_bytes(patched)
     report = {
-        "status": "OFFLINE ONLY; NOT VERIFIED ON PHONE; DO NOT FLASH",
+        "status": "OFFLINE BUILD ONLY; NOT A NAND WRITE PACKAGE; DO NOT FLASH",
+        "safe_to_flash": False,
+        "device_accessed": False,
+        "device_write_performed": False,
         "source_sha256": EXPECTED,
         "output_sha256": hashlib.sha256(patched).hexdigest(),
+        "matches_phone_verified_image": hashlib.sha256(patched).hexdigest() == VERIFIED_OUTPUT,
+        "historical_device_test": {
+            "image_sha256": VERIFIED_OUTPUT,
+            "date": "2026-10-12",
+            "scope": "One Philips Xenium L728; three-block update and six-block readback verified",
+            "owner_feedback": "Работает идеально.",
+        },
         "mapping_base": hex(BASE), "payload_offset": hex(PAYLOAD),
         "old_dhtb_size": hex(size), "new_dhtb_size": hex(new_size),
         "callbacks": edits, "symbols": {k: hex(v) for k, v in symbols.items() if k.endswith("_wrapper") or k == "remap_event"},
+        "implemented_features": [
+            "Contextual digit-2/4/6/8 to arrow remapping in supported menu/list handlers",
+            "Contextual digit-5 to OK remapping in supported menu/list handlers",
+            "Suppress numeric key-down events in contacts/search handlers while preserving mapped arrows",
+        ],
+        "not_implemented": [
+            "SOS-button lock/unlock: physical SOS event code and reachable locked-state handler are unproven",
+            "Home-screen center key to phonebook: safe launch path is unproven",
+        ],
         "limitations": [
-            "DHTB signature/checksum acceptance and runtime mapping not yet verified",
-            "Contact navigation forces list focus; actual UI routing still needs phone testing",
+            "Device testing covers the recorded image hash on one matching L728, not other firmware versions",
             "Only key-down events are remapped; long-press repeat is not added",
-            "No NAND programming or FTL-aware restoration tool implemented",
+            "The output is a logical user image, not an ECC-encoded NAND block package",
+            "navigation_transition.py requires private per-device snapshots and a running initialized FDL",
+            "The legacy six-block plan targets the earlier image, not this three-block update",
+            "No general FTL remapping/bad-block relocation implemented",
         ],
     }
     (OUTPUT / "manifest.json").write_text(json.dumps(report, indent=2) + "\n")

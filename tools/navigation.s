@@ -38,7 +38,13 @@ contact_wrapper:
     bl remap_event
     ldr r2, [sp, #4]
     cmp r1, r2
-    beq contact_done
+    beq contact_check_digit
+    movw r2, #0xfa1b @ Key 5 maps to OK, without changing focus.
+    cmp r1, r2
+    bne contact_find_list
+    str r1, [sp, #4]
+    b contact_done
+contact_find_list:
     mov r5, r1
     ldr r4, [sp]
     mov r0, r4
@@ -57,6 +63,20 @@ contact_remap:
     ldr ip, =0x881ecd65 @ Focus the list even if the search edit had focus.
     blx ip
     str r5, [sp, #4]
+    b contact_done
+contact_check_digit:
+    ldr r2, [sp, #4]
+    movw r3, #0xfa08
+    cmp r2, r3
+    blo contact_done
+    adds r3, #10
+    cmp r2, r3
+    bhi contact_done
+    b contact_consume
+contact_consume:
+    pop {r0, r1, r2, r3, r4, r5, r6, lr}
+    movs r0, #1
+    bx lr
 contact_done:
     pop {r0, r1, r2, r3, r4, r5, r6, lr}
     ldr ip, =0x886bffcd
@@ -67,7 +87,13 @@ search_contact_wrapper:
     bl remap_event
     ldr r2, [sp, #4]
     cmp r1, r2
-    beq search_contact_done
+    beq search_contact_check_digit
+    movw r2, #0xfa1b @ Key 5 maps to the contact list's OK action.
+    cmp r1, r2
+    bne search_contact_find_list
+    str r1, [sp, #4]
+    b search_contact_done
+search_contact_find_list:
     mov r5, r1
     ldr r4, [sp]
     mov r0, r4
@@ -80,6 +106,18 @@ search_contact_wrapper:
     ldr ip, =0x881ecd65
     blx ip
     str r5, [sp, #4]
+    b search_contact_done
+search_contact_check_digit:
+    ldr r2, [sp, #4]
+    movw r3, #0xfa08
+    cmp r2, r3
+    blo search_contact_done
+    adds r3, #10
+    cmp r2, r3
+    bhi search_contact_done
+    pop {r0, r1, r2, r3, r4, r5, r6, lr}
+    movs r0, #1
+    bx lr
 search_contact_done:
     pop {r0, r1, r2, r3, r4, r5, r6, lr}
     ldr ip, =0x886c2ac3
@@ -89,6 +127,9 @@ remap_event:
     @ Physical table: 0x32->logical9, 0x34->11, 0x36->13, 0x38->15.
     @ Logical arrows: up1, down2, left3, right4.
     @ Only ordinary key-down events; text controls do not call these wrappers.
+    movw r2, #0xfa0c
+    cmp r1, r2
+    beq center_ok
     movw r2, #0xfa09
     cmp r1, r2
     beq up
@@ -113,5 +154,8 @@ right:
     bx lr
 down:
     movw r1, #0xfa02
+    bx lr
+center_ok:
+    movw r1, #0xfa1b
     bx lr
 .ltorg
