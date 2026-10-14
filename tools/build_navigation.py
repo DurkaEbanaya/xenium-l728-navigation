@@ -88,7 +88,7 @@ def main():
             "Suppress numeric key-down events in contacts/search handlers while preserving mapped arrows",
         ],
         "not_implemented": [
-            "SOS-button lock/unlock: physical SOS event code and reachable locked-state handler are unproven",
+            "SOS-button lock/unlock is supplied separately by build_sos.py --no-flash (v0.3.0)",
             "Home-screen center key to phonebook: safe launch path is unproven",
         ],
         "limitations": [

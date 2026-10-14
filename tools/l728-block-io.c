@@ -71,9 +71,18 @@ static int read_page(unsigned page, uint32_t base) {
     }
     return 0;
 }
-static int allowed(unsigned block) {
+static int allowed(unsigned block, unsigned operation) {
+#ifdef L728_SOS_TRANSITION
+    /* SOS package: read the full known footprint; mutate only its three
+     * transition blocks. The released six-block helper remains unchanged. */
+    if (operation) return block == 0x13d || block == 0x172 || block == 0x17c;
+    return block == 0x13d || block == 0x143 || block == 0x145 ||
+           block == 0x14c || block == 0x172 || block == 0x17a || block == 0x17c;
+#else
+    (void)operation;
     return block == 0x13d || block == 0x143 || block == 0x145 ||
            block == 0x14c || block == 0x17a || block == 0x17c;
+#endif
 }
 void helper(void) {
     unsigned magic = CTRL[0], operation = CTRL[1], block = CTRL[2];
@@ -81,7 +90,7 @@ void helper(void) {
     int rc = 0;
     CTRL[3] = 0; CTRL[4] = 0; CTRL[5] = 0;
     CTRL[6] = 0; CTRL[7] = 0; CTRL[8] = 0;
-    if (magic != 0x4c373238 || operation > 1 || !allowed(block)) {
+    if (magic != 0x4c373238 || operation > 1 || !allowed(block, operation)) {
         CTRL[4] = 1; return;
     }
     *(volatile uint32_t *)0x21500060 = 0x308;
